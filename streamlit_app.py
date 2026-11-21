@@ -7,8 +7,8 @@ import streamlit as st
 st.set_page_config(page_title="AI Chat", page_icon="✺", layout="centered")
 
 MODELS = {
-    "Gemini Flash": "gemini-flash-latest",
-    "Gemini Flash-Lite": "gemini-flash-lite-latest",
+    "Gemini 3.8 Flash": "gemini-3.8-flash",
+    "Gemini 3.5 Flash-Lite": "gemini-3.5-flash-lite",
 }
 STARTERS = [
     ("✦ Explain", "Explain how GitHub pull requests work, simply."),
