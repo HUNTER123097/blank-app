@@ -4,12 +4,11 @@ import time
 
 import streamlit as st
 
-st.set_page_config(page_title="Claude", page_icon="✺", layout="centered")
+st.set_page_config(page_title="AI Chat", page_icon="✺", layout="centered")
 
 MODELS = {
-    "Sonnet 5.5": "claude-sonnet-5-5",
-    "Opus 5.5": "claude-opus-5-5",
-    "Haiku 5.5": "claude-haiku-5-5",
+    "Gemini Flash": "gemini-flash-latest",
+    "Gemini Flash-Lite": "gemini-flash-lite-latest",
 }
 STARTERS = [
     ("✦ Explain", "Explain how GitHub pull requests work, simply."),
@@ -56,12 +55,17 @@ section[data-testid="stSidebar"] { background:#15120F; border-right:1px solid rg
 )
 
 with st.sidebar:
-    st.markdown("### ✺ Claude")
+    st.markdown("### ✺ AI Chat")
     model_name = st.selectbox("Model", list(MODELS))
-    system = st.text_area("System prompt", "You are Claude, a warm, concise assistant.", height=100)
+    system = st.text_area("System prompt", "You are a warm, concise assistant.", height=100)
+    default_key = os.environ.get("GEMINI_API_KEY", "")
+    try:
+        default_key = default_key or st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:  # noqa: BLE001
+        pass
     api_key = st.text_input(
-        "Anthropic API key",
-        value=os.environ.get("ANTHROPIC_API_KEY", ""),
+        "Gemini API key",
+        value=default_key,
         type="password",
         help="Leave empty for demo mode.",
     )
@@ -104,16 +108,28 @@ def demo_stream(prompt):
 
 
 def real_stream(history):
-    import anthropic
+    from google import genai
+    from google.genai import types
 
-    client = anthropic.Anthropic(api_key=api_key)
-    with client.messages.stream(
-        model=MODELS[model_name], max_tokens=1500, system=system, messages=history
-    ) as s:
-        yield from s.text_stream
+    client = genai.Client(api_key=api_key)
+    contents = [
+        types.Content(
+            role="model" if m["role"] == "assistant" else "user",
+            parts=[types.Part(text=m["content"])],
+        )
+        for m in history
+    ]
+    stream = client.models.generate_content_stream(
+        model=MODELS[model_name],
+        contents=contents,
+        config=types.GenerateContentConfig(system_instruction=system, max_output_tokens=1500),
+    )
+    for chunk in stream:
+        if chunk.text:
+            yield chunk.text
 
 
-prompt = st.chat_input("Message Claude…") or pending
+prompt = st.chat_input("Message…") or pending
 if prompt:
     messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
